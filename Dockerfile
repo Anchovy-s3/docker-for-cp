@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
 # タイムゾーンの設定
 ENV TZ=Asia/Tokyo
@@ -34,8 +34,16 @@ ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+# グループが存在しない場合のみ作成（既に存在する場合はスキップ）
+RUN if getent group $USER_GID > /dev/null 2>&1; then \
+        echo "Group with GID $USER_GID already exists"; \
+    else \
+        groupadd --gid $USER_GID $USERNAME; \
+    fi \
+    # 既存のグループ名を取得（存在する場合）
+    && GROUP_NAME=$(getent group $USER_GID | cut -d: -f1) \
+    # ユーザーを作成
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -g $GROUP_NAME \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
@@ -51,8 +59,18 @@ RUN apt-get update && apt-get install -y \
 
 # SSHサーバーの設定
 RUN mkdir -p /var/run/sshd
-RUN echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
-RUN echo "PermitEmptyPasswords no" >> /etc/ssh/sshd_config
+# 空パスワード設定の代わりにSSH鍵認証を有効化
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+
+# ユーザーのSSH設定ディレクトリの作成
+RUN mkdir -p /home/$USERNAME/.ssh \
+    && chmod 700 /home/$USERNAME/.ssh
+
+# 外部の公開鍵ファイルをコピー
+COPY id_rsa.pub /home/$USERNAME/.ssh/authorized_keys
+RUN chmod 600 /home/$USERNAME/.ssh/authorized_keys \
+    && chown -R $USERNAME:$USERNAME /home/$USERNAME/.ssh
 
 # VSCode Server用のディレクトリ
 RUN mkdir -p /home/$USERNAME/.vscode-server/extensions \
