@@ -23,11 +23,8 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# 日本語ロケールの設定
-RUN locale-gen ja_JP.UTF-8
-ENV LANG ja_JP.UTF-8
-ENV LANGUAGE ja_JP:ja
-ENV LC_ALL ja_JP.UTF-8
+# 日本語ロケールの設定を削除
+# デフォルトのロケールを使用
 
 # VSCode用の非rootユーザーの作成
 ARG USERNAME=vscode

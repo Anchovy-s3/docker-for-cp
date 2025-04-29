@@ -1,11 +1,10 @@
-# 競プロ用Docker開発環境
+# 競プロ用Docker環境
 
 このDockerイメージは、C/C++開発用の環境を提供します。Ubuntu 22.04をベースにして、開発に必要なツールやSSHサーバーが設定されています。
 
 ## 特徴
 
 - Ubuntu 22.04ベース
-- 日本語対応（ja_JP.UTF-8）
 - タイムゾーン：Asia/Tokyo
 - C/C++開発環境（gcc, g++, clang, gdb, cmake等）
 - VSCodeリモート開発対応
@@ -170,3 +169,178 @@ docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service log'"
 - コンテナのセキュリティは、SSH鍵の安全な管理に依存しています
 - 実運用環境では適切なセキュリティ対策を施してください
 - コンテナを停止するには `docker stop dev-container` を実行してください
+
+---
+
+# Docker Environment for Competitive Programming
+
+This Docker image provides a dedicated environment for competitive programming, primarily focused on C/C++. Based on Ubuntu 22.04, it includes necessary development tools and connectivity options to code from anywhere.
+
+## Features
+
+- Ubuntu 22.04 base
+- Timezone: Asia/Tokyo
+- C/C++ development environment (gcc, g++, clang, gdb, cmake, etc.)
+- VSCode remote development support
+- SSH connection support (key authentication)
+- Remote access via VSCode tunnel feature (daemonized)
+- Persistent container design
+- Optimized for competitive programming contests
+
+## Prerequisites
+
+- Docker installed
+- SSH key configured (can be specified at build time)
+
+## Building the Image
+
+### Standard Build
+```bash
+docker build -t dev-cpp-env .
+```
+
+### Specifying SSH Keys at Build Time
+To build using the host's authorized SSH public keys:
+
+```bash
+# For Windows PowerShell
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="$(Get-Content $HOME/.ssh/authorized_keys)" .
+
+# For Windows Command Prompt
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="YOUR_SSH_PUBLIC_KEY_HERE" .
+
+# For Linux/macOS
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/authorized_keys)" .
+```
+
+To specify a particular public key:
+
+```bash
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="ssh-rsa AAAA... your-key-comment" .
+```
+
+## Starting the Container
+
+```bash
+docker run -d -p 2222:22 --name dev-container dev-cpp-env
+```
+
+You can also mount volumes as needed:
+
+```bash
+docker run -d -p 2222:22 -v /path/to/local/workspace:/workspace --name dev-container dev-cpp-env
+```
+
+## Checking Container Status
+
+To verify that the container is running properly:
+
+```bash
+docker logs dev-container
+```
+
+The startup logs will be displayed, including messages like "SSH server is running on port 22".
+
+## Accessing the Container
+
+### 1. SSH Connection
+
+```bash
+ssh -p 2222 vscode@localhost
+```
+
+Note: SSH key authentication is configured. Use the corresponding private key.
+
+### 2. Connection Using VSCode Tunnel
+
+The VSCode tunnel service is automatically installed and started as a daemon when the container launches. Authentication is required for first-time connection:
+
+```bash
+# Display tunnel service logs to get the authentication URL
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service log'"
+```
+
+This command will show an authentication URL in the logs. Example:
+```
+To grant access to the server, please log into https://github.com/login/device and use code ABCD-EFGH
+```
+
+Open this URL in your browser, enter the provided code, and log in with your Microsoft account (or GitHub account) to complete authentication.
+
+After authentication, you can connect via the tunnel from the "Tunnels" section in VSCode's Remote Explorer.
+
+You can also connect to this tunnel from other devices using VS Code logged in with the same Microsoft account.
+
+### 3. Direct Shell Access to the Container
+
+```bash
+# Access as regular user (vscode)
+docker exec -it dev-container bash
+
+# Access as root user
+docker exec -it -u root dev-container bash
+```
+
+### 4. Connection from Visual Studio Code
+
+1. Install the "Remote - SSH" extension in VSCode
+2. Open Remote Explorer in VSCode
+3. Add the following to SSH config:
+
+```
+Host docker-dev
+    HostName localhost
+    User vscode
+    Port 2222
+    IdentityFile /path/to/private/key
+```
+
+4. Connect to "docker-dev"
+
+## User Information
+
+- Username: vscode
+- UID/GID: 1000
+- Privileges: sudo without password
+
+## Working Directory
+
+The container's working directory is set to `/workspace`.
+
+## Implementation Details
+
+This container operates continuously with the following mechanism:
+
+1. The `start.sh` script runs when the container starts
+2. The SSH server starts in the background
+3. VSCode tunnel service is installed as a system service and started as a daemon
+4. The `tail -f` command keeps the container running
+5. Logs are stored in `/var/log/docker-logs/keep-alive.log`
+
+The VSCode tunnel authentication state is saved in `/home/vscode/.vscode/tunnels` and persists through container restarts.
+
+### Managing VSCode Tunnel Service
+
+Checking service status:
+```bash
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service status'"
+```
+
+Restarting the service:
+```bash
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service restart'"
+```
+
+Checking service logs:
+```bash
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service log'"
+```
+
+## Notes
+
+- This container disables password authentication and allows only SSH key authentication
+- SSH keys can be passed at build time with `--build-arg SSH_AUTHORIZED_KEYS`
+- If keys are not specified at build time, they need to be manually added to `/home/vscode/.ssh/authorized_keys` file in the container
+- Container security depends on safe management of SSH keys
+- Use appropriate security measures in production environments
+- To stop the container, run `docker stop dev-container`
