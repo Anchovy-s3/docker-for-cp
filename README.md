@@ -10,6 +10,7 @@
 - C/C++開発環境（gcc, g++, clang, gdb, cmake等）
 - VSCodeリモート開発対応
 - SSH接続サポート（鍵認証）
+- VSCodeトンネル機能によるリモートアクセス（デーモン化）
 - 永続的に動作するコンテナ設計
 
 ## 前提条件
@@ -55,7 +56,27 @@ ssh -p 2222 vscode@localhost
 
 ※SSH鍵認証が設定されています。対応する秘密鍵を使用してください。
 
-### 2. コンテナにシェルで直接アクセス
+### 2. VSCodeトンネルを使用した接続
+
+コンテナ起動時に自動的にVSCodeトンネルサービスがデーモンとしてインストールされ、起動します。初回接続時には認証が必要です:
+
+```bash
+# トンネルサービスのログを表示して認証URLを取得
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service log'"
+```
+
+このコマンドを実行すると、ログの中に認証用のURLが表示されます。例：
+```
+To grant access to the server, please log into https://github.com/login/device and use code ABCD-EFGH
+```
+
+このURLをブラウザで開き、提示されたコードを入力して、Microsoftアカウント（またはGitHubアカウント）でログインして認証を完了します。
+
+認証が完了したら、VSCodeのRemote Explorer（リモートエクスプローラー）から「Tunnels」セクションを開き、表示されているトンネル経由で接続できます。
+
+他のデバイスからも同じMicrosoftアカウントでログインしたVS Codeからこのトンネルに接続できます。
+
+### 3. コンテナにシェルで直接アクセス
 
 ```bash
 # 通常ユーザー（vscode）としてアクセス
@@ -65,7 +86,7 @@ docker exec -it dev-container bash
 docker exec -it -u root dev-container bash
 ```
 
-### 3. Visual Studio Codeからの接続
+### 4. Visual Studio Codeからの接続
 
 1. VSCodeに「Remote - SSH」拡張機能をインストール
 2. VSCodeでリモートエクスプローラーを開く
@@ -97,8 +118,28 @@ Host docker-dev
 
 1. `start.sh`スクリプトがコンテナ起動時に実行されます
 2. SSHサーバーがバックグラウンドで起動します
-3. `tail -f`コマンドを使ってコンテナが終了しないようにしています
-4. ログは`/var/log/docker-logs/keep-alive.log`に保存されます
+3. VSCodeトンネルサービスがシステムサービスとしてインストールされ、デーモンとして起動します
+4. `tail -f`コマンドを使ってコンテナが終了しないようにしています
+5. ログは`/var/log/docker-logs/keep-alive.log`に保存されます
+
+VSCodeトンネルの認証状態は `/home/vscode/.vscode/tunnels` に保存され、コンテナを再起動しても維持されます。
+
+### VSCodeトンネルサービスの管理
+
+サービスの状態確認:
+```bash
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service status'"
+```
+
+サービスの再起動:
+```bash
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service restart'"
+```
+
+サービスのログ確認:
+```bash
+docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service log'"
+```
 
 ## 注意事項
 

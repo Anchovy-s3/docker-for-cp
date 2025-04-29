@@ -57,6 +57,21 @@ RUN apt-get update && apt-get install -y \
     clang-tidy \
     && rm -rf /var/lib/apt/lists/*
 
+# VSCodeをインストール
+RUN apt-get update && apt-get install -y apt-transport-https
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg \
+    && install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg \
+    && sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' \
+    && rm -f packages.microsoft.gpg
+
+RUN apt-get update && apt-get install -y code \
+    && rm -rf /var/lib/apt/lists/*
+
+# VS Code CLI用のパッケージ
+RUN apt-get update && apt-get install -y \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 # SSHサーバーの設定
 RUN mkdir -p /var/run/sshd
 # 空パスワード設定の代わりにSSH鍵認証を有効化
