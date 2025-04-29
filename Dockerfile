@@ -85,4 +85,13 @@ USER $USERNAME
 
 # SSHサーバーの起動
 EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
+
+# スタートアップスクリプトの追加
+COPY start.sh /start.sh
+RUN sudo chmod +x /start.sh
+
+# ユーザー権限をrootに戻す（スタートアップスクリプト用）
+USER root
+
+# SSHサーバーとtailを使用してコンテナを動作させ続ける
+CMD ["/start.sh"]

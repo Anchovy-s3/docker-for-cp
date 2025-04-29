@@ -10,6 +10,7 @@
 - C/C++開発環境（gcc, g++, clang, gdb, cmake等）
 - VSCodeリモート開発対応
 - SSH接続サポート（鍵認証）
+- 永続的に動作するコンテナ設計
 
 ## 前提条件
 
@@ -33,6 +34,16 @@ docker run -d -p 2222:22 --name dev-container dev-cpp-env
 ```bash
 docker run -d -p 2222:22 -v /path/to/local/workspace:/workspace --name dev-container dev-cpp-env
 ```
+
+## コンテナの状態確認
+
+コンテナが正常に動作しているか確認するには：
+
+```bash
+docker logs dev-container
+```
+
+起動ログが表示され、「SSH server is running on port 22」などのメッセージが確認できます。
 
 ## コンテナへのアクセス方法
 
@@ -80,8 +91,18 @@ Host docker-dev
 
 コンテナ内の作業ディレクトリは `/workspace` に設定されています。
 
+## 実装の詳細
+
+このコンテナは以下の仕組みで永続的に動作します：
+
+1. `start.sh`スクリプトがコンテナ起動時に実行されます
+2. SSHサーバーがバックグラウンドで起動します
+3. `tail -f`コマンドを使ってコンテナが終了しないようにしています
+4. ログは`/var/log/docker-logs/keep-alive.log`に保存されます
+
 ## 注意事項
 
 - このコンテナはパスワード認証を無効化し、SSH鍵認証のみを許可しています
 - コンテナのセキュリティは、SSH鍵の安全な管理に依存しています
 - 実運用環境では適切なセキュリティ対策を施してください
+- コンテナを停止するには `docker stop dev-container` を実行してください
