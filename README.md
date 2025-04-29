@@ -16,12 +16,33 @@
 ## 前提条件
 
 - Dockerがインストールされていること
-- SSH鍵ペアが用意されていること（公開鍵が`id_rsa.pub`として配置済み）
+- SSH鍵が設定されていること（ビルド時に鍵を指定する方法があります）
 
 ## イメージのビルド
 
+### 標準的なビルド
 ```bash
 docker build -t dev-cpp-env .
+```
+
+### SSH鍵をビルド時に指定
+ホストの認証済みSSH公開鍵を使用してビルドする場合:
+
+```bash
+# Windows PowerShellの場合
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="$(Get-Content $HOME/.ssh/authorized_keys)" .
+
+# Windows コマンドプロンプトの場合
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="YOUR_SSH_PUBLIC_KEY_HERE" .
+
+# Linux/macOSの場合
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/authorized_keys)" .
+```
+
+特定の公開鍵を指定する場合:
+
+```bash
+docker build -t dev-cpp-env --build-arg SSH_AUTHORIZED_KEYS="ssh-rsa AAAA... your-key-comment" .
 ```
 
 ## コンテナの起動
@@ -144,6 +165,8 @@ docker exec -it dev-container bash -c "su - vscode -c 'code tunnel service log'"
 ## 注意事項
 
 - このコンテナはパスワード認証を無効化し、SSH鍵認証のみを許可しています
+- SSH鍵はビルド時に `--build-arg SSH_AUTHORIZED_KEYS` で渡すことができます
+- ビルド時に鍵を指定しなかった場合は、後でコンテナ内の `/home/vscode/.ssh/authorized_keys` ファイルに手動で追加する必要があります
 - コンテナのセキュリティは、SSH鍵の安全な管理に依存しています
 - 実運用環境では適切なセキュリティ対策を施してください
 - コンテナを停止するには `docker stop dev-container` を実行してください

@@ -82,8 +82,9 @@ RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/s
 RUN mkdir -p /home/$USERNAME/.ssh \
     && chmod 700 /home/$USERNAME/.ssh
 
-# 外部の公開鍵ファイルをコピー
-COPY id_rsa.pub /home/$USERNAME/.ssh/authorized_keys
+# ホストの~/.ssh/authorized_keysをコンテナにコピー（ビルド時に引数で指定）
+ARG SSH_AUTHORIZED_KEYS=""
+RUN echo "$SSH_AUTHORIZED_KEYS" > /home/$USERNAME/.ssh/authorized_keys || echo "SSH keys will need to be manually added later"
 RUN chmod 600 /home/$USERNAME/.ssh/authorized_keys \
     && chown -R $USERNAME:$USERNAME /home/$USERNAME/.ssh
 
